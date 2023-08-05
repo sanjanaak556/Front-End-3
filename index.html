@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User Location</title>
+  <style>
+    #map {
+      height: 400px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>User Location</h1>
+  
+  <button id="getInfoBtn">Get User Info</button>
+  <div id="map"></div>
+  
+  <h2>User Pincode</h2>
+  <p id="pincode"></p>
+  
+  <h2>User Timezone</h2>
+  <p id="timezone"></p>
+  
+  <h2>Post Offices in the Area</h2>
+  <input type="text" id="searchBox" placeholder="Search by name or branch office">
+  <ul id="postOffices"></ul>
+
+  <script>
+    function getUserLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+      } else {
+        console.log('Geolocation is not supported by this browser.');
+      }
+    }
+    
+    function successCallback(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      
+      showMap(latitude, longitude);
+      
+      getPostOffices(latitude, longitude);
+    }
+    
+    function errorCallback(error) {
+      console.log('An error occurred while retrieving geolocation:', error.message);
+    }
+    
+    function showMap(latitude, longitude) {
+      const mapDiv = document.getElementById('map');
+      const mapUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&output=embed`;
+      mapDiv.innerHTML = `<iframe src="${mapUrl}" width="360" height="270" style="border:0"></iframe>`;
+    }
+    
+    function getPostOffices(latitude, longitude) {
+      const request = new XMLHttpRequest();
+      const url = `https://api.postalpincode.in/pincode?lat=${latitude}&lng=${longitude}`;
+
+      request.open('GET', url, true);
+      request.onload = function() {
+        if (request.status >= 200 && request.status < 400) {
+          const data = JSON.parse(request.responseText);
+          const postOffices = data[0].PostOffice;
+          const pincode = data[0].Pincode;
+
+          document.getElementById('pincode').textContent = `Pincode: ${pincode}`;
+          
+          displayPostOffices(postOffices);
+        } else {
+          console.log('An error occurred while retrieving the post offices.');
+        }
+      };
+      request.onerror = function() {
+        console.log('An error occurred while making the request.');
+      };
+      request.send();
+    }
+    
+    function displayPostOffices(postOffices) {
+      const searchBox = document.getElementById('searchBox');
+      const postOfficesList = document.getElementById('postOffices');
+      
+      searchBox.addEventListener('input', () => {
+        const searchTerm = searchBox.value.trim().toLowerCase();
+        const filteredPostOffices = postOffices.filter(postOffice => {
+          return (
+            postOffice.Name.toLowerCase().includes(searchTerm) ||
+            postOffice.BranchType.toLowerCase().includes(searchTerm)
+          );
+        });
+        renderPostOffices(filteredPostOffices);
+      });
+      
+      renderPostOffices(postOffices);
+      
+      function renderPostOffices(postOffices) {
+        postOfficesList.innerHTML = '';
+        
+        if (postOffices.length === 0) {
+          postOfficesList.innerHTML = '<li>No post offices found</li>';
+        } else {
+          postOffices.forEach(postOffice => {
+            const listItem = document.createElement('li');
+            listItem.textContent = `${postOffice.Name} (${postOffice.BranchType})`;
+            postOfficesList.appendChild(listItem);
+          });
+        }
+      }
+    }
+    
+    document.getElementById('getInfoBtn').addEventListener('click', () => {
+      getUserLocation();
+    });
+  </script>
+</body>
+</html>
